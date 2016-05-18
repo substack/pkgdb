@@ -6,6 +6,7 @@ var through = require('through2')
 var readonly = require('read-only-stream')
 var inherits = require('inherits')
 var EventEmitter = require('events').EventEmitter
+var sub = require('subleveldown')
 var Package = require('./lib/pkg.js')
 
 var INFO = 'i', DRIVE = 'd'
@@ -23,19 +24,19 @@ function DB (db, opts) {
 DB.prototype._getArchive = function (name, fn) {
   var self = this
   self.db.get('link!' + name, function (err, link) {
-    if (err && notFound(err)) {
+    if (err && !notFound(err)) {
       self.emit('error', err)
     } else if (link) {
       fn(self.drive.createArchive(link))
     } else {
-      self.archive = self.drive.createArchive()
-      var wv = self.archive.createWriteStream('versions.json')
+      var archive = self.drive.createArchive()
+      var ws = archive.createFileWriteStream('versions.json')
       ws.end('[]\n')
-      self.archive.finalize(function () {
-        self.db.put('link', link, function (err) {
+      archive.finalize(function () {
+        link = archive.key.toString('hex')
+        self.db.put('link!' + name, link, function (err) {
           if (err) return self.emit('error', err)
-          self.link = self.archive.key.toString('hex')
-          if (--self._pending === 0) self.emit('_ready')
+          fn(self.drive.createArchive(link))
         })
       })
     }
@@ -58,7 +59,8 @@ DB.prototype.list = function (cb) {
 DB.prototype.open = function (name) {
   var self = this
   return new Package(function (version) {
-    var cursor = hprefix(version === undefined ? name : name + '/' + version)
+    var parent = hprefix(name)
+    var cursor = hprefix(name + '/' + version)
     var finalize = []
     cursor.finalize = function (fn) { finalize.push(fn) }
     self._getArchive(name, function (archive) {
@@ -66,10 +68,13 @@ DB.prototype.open = function (name) {
       finalize = null
       cursor.finalize = function (fn) { archive.finalize(fn) }
       cursor.setArchive(archive)
+      parent.setArchive(archive)
     })
-    return cursor
+    return { parent: parent, version: cursor }
   })
 }
 
-function notFound (err) { return /^notfound/i.test(err) || err.notFound }
+function notFound (err) {
+  return err && (/^notfound/i.test(err) || err.notFound)
+}
 function noop () {}
