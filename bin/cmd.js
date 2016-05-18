@@ -10,19 +10,18 @@ var pkgdb = require('../')
 var argv = minimist(process.argv.slice(2))
 var dir = process.cwd()
 var name = defined(argv.name, path.basename(dir))
-var db = level('.pkgdb')
+var db = level('.pkgdb', { valueEncoding: 'binary' })
 var pkg = pkgdb(db).open(name)
 
 if (argv._[0] === 'publish') {
   var version = argv._[1]
   var pub = pkg.publish(version)
-  var g = glob('**')
+  var g = glob('**', {
+    ignore: [ '.pkgdb/**', '.git', 'node_modules' ]
+  })
   g.once('match', function (m) {
     fs.createReadStream(path.join(dir, m))
       .pipe(pub.createFileWriteStream(m))
-  })
-  g.once('end', function () {
-    pub.finalize()
   })
 } else if (argv._[0] === 'versions') {
   var version = argv._[1]

@@ -7,6 +7,8 @@ var readonly = require('read-only-stream')
 var inherits = require('inherits')
 var EventEmitter = require('events').EventEmitter
 var sub = require('subleveldown')
+var mutexify = require('mutexify')
+var has = require('has')
 var Package = require('./lib/pkg.js')
 
 var INFO = 'i', DRIVE = 'd'
@@ -19,27 +21,43 @@ function DB (db, opts) {
   EventEmitter.call(this)
   this.db = sub(db, INFO)
   this.drive = hyperdrive(sub(db, DRIVE))
+  this._links = {}
+  this._locks = {}
 }
 
 DB.prototype._getArchive = function (name, fn) {
   var self = this
-  self.db.get('link!' + name, function (err, link) {
-    if (err && !notFound(err)) {
-      self.emit('error', err)
-    } else if (link) {
-      fn(self.drive.createArchive(link))
-    } else {
-      var archive = self.drive.createArchive()
-      var ws = archive.createFileWriteStream('versions.json')
-      ws.end('[]\n')
-      archive.finalize(function () {
+  if (has(self._links, name)) {
+    return process.nextTick(function () {
+      fn(self.drive.createArchive(self._links[name], { live: true }))
+    })
+  }
+  if (!has(self._locks, name)) {
+    self._locks[name] = mutexify()
+  }
+  self._locks[name](function (release) {
+    self.db.get('link!' + name, function (err, link) {
+      if (err && !notFound(err)) {
+        self.emit('error', err)
+        release()
+      } else if (link) {
+        link = Buffer(link, 'hex')
+        fn(self.drive.createArchive(link, { live: true }))
+        self._links[name] = link
+        release()
+      } else {
+        var archive = self.drive.createArchive(undefined, { live: true })
+        var ws = archive.createFileWriteStream('versions.json')
+        ws.end('[]\n')
         link = archive.key.toString('hex')
+        self._links[name] = archive.key
         self.db.put('link!' + name, link, function (err) {
           if (err) return self.emit('error', err)
-          fn(self.drive.createArchive(link))
+          fn(self.drive.createArchive(archive.key, { live: true }))
+          release()
         })
-      })
-    }
+      }
+    })
   })
 }
 
@@ -61,12 +79,7 @@ DB.prototype.open = function (name) {
   return new Package(function (version) {
     var parent = hprefix(name)
     var cursor = hprefix(name + '/' + version)
-    var finalize = []
-    cursor.finalize = function (fn) { finalize.push(fn) }
     self._getArchive(name, function (archive) {
-      finalize.forEach(function (fn) { archive.finalize(fn) })
-      finalize = null
-      cursor.finalize = function (fn) { archive.finalize(fn) }
       cursor.setArchive(archive)
       parent.setArchive(archive)
     })
