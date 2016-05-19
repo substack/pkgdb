@@ -38,7 +38,7 @@ if (argv._[0] === 'publish') {
   })
 } else if (argv._[0] === 'files') {
   var version = argv._[1]
-  pkg.files(version, function (err, files) {
+  pkg.open(version).list(function (err, files) {
     if (err) return error(err)
     files.forEach(function (entry) { console.log(entry.name) })
   })
