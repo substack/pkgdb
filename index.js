@@ -79,13 +79,11 @@ DB.prototype.list = function (cb) {
 DB.prototype.open = function (name) {
   var self = this
   return new Package(function (version) {
-    var parent = hprefix(name)
-    var cursor = hprefix(name + '/' + version)
+    var cursor = hprefix(version)
     self._getArchive(name, function (archive) {
       cursor.setArchive(archive)
-      parent.setArchive(archive)
     })
-    return { parent: parent, version: cursor }
+    return cursor
   })
 }
 

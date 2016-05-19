@@ -29,6 +29,12 @@ if (argv._[0] === 'publish') {
     if (err) return error(err)
     versions.forEach(function (v) { console.log(v) })
   })
+} else if (argv._[0] === 'files') {
+  var version = argv._[1]
+  pkg.files(version, function (err, files) {
+    if (err) return error(err)
+    files.forEach(function (entry) { console.log(entry.name) })
+  })
 }
 
 function error (err) {
