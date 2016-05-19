@@ -17,12 +17,19 @@ if (argv._[0] === 'publish') {
   var version = argv._[1]
   var pub = pkg.publish(version)
   var g = glob('**', {
-    ignore: [ '.pkgdb/**', '.git', 'node_modules' ]
+    ignore: [ '.pkgdb/**', '.git/**', 'node_modules/**' ],
+    nodir: true
   })
-  g.once('match', function (m) {
+  var pending = 1
+  g.on('match', function (m) {
+    pending++
     fs.createReadStream(path.join(dir, m))
       .pipe(pub.createFileWriteStream(m))
+      .once('finish', done)
   })
+  g.once('end', done)
+
+  function done () { if (--pending === 0) pub.commit() }
 } else if (argv._[0] === 'versions') {
   var version = argv._[1]
   pkg.versions(function (err, versions) {
