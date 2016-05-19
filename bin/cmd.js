@@ -42,6 +42,11 @@ if (argv._[0] === 'publish') {
     if (err) return error(err)
     files.forEach(function (entry) { console.log(entry.name) })
   })
+} else if (argv._[0] === 'read') {
+  var version = argv._[1]
+  var file = argv._[2]
+  pkg.open(version).createFileReadStream(file)
+    .pipe(process.stdout)
 }
 
 function error (err) {
