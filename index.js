@@ -48,14 +48,16 @@ DB.prototype._getArchive = function (name, fn) {
       } else {
         var archive = self.drive.createArchive(undefined, { live: true })
         var ws = archive.createFileWriteStream('versions.json')
-        ws.end('[]\n')
         link = archive.key.toString('hex')
         self._links[name] = archive.key
-        self.db.put('link!' + name, link, function (err) {
-          if (err) return self.emit('error', err)
-          fn(self.drive.createArchive(archive.key, { live: true }))
-          release()
+        ws.once('finish', function () {
+          self.db.put('link!' + name, link, function (err) {
+            if (err) return self.emit('error', err)
+            fn(self.drive.createArchive(archive.key, { live: true }))
+            release()
+          })
         })
+        ws.end('[]\n')
       }
     })
   })
