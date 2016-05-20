@@ -9,9 +9,7 @@ var pkgdb = require('../')
 
 var argv = minimist(process.argv.slice(2))
 var dir = process.cwd()
-var name = defined(argv.name, path.basename(dir))
-var db = level('.pkgdb', { valueEncoding: 'binary' })
-var pkg = pkgdb(db).open(name)
+var pkg = pkgdb(level('.pkgdb'))
 
 if (argv._[0] === 'publish') {
   var version = argv._[1]
@@ -23,7 +21,7 @@ if (argv._[0] === 'publish') {
   var pending = 1
   g.on('match', function (m) {
     pending++
-    fs.createReadStream(path.join(dir, m))
+    fs.createReadStream(m)
       .pipe(pub.createFileWriteStream(m))
       .once('finish', done)
   })
