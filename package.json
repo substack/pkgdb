@@ -6,7 +6,6 @@
   "dependencies": {
     "collect-stream": "^1.1.1",
     "concat-stream": "^1.5.1",
-    "hyperdrive": "^5.1.1",
     "hyperdrive-prefix": "^1.2.1",
     "inherits": "^2.0.1",
     "mutexify": "^1.1.0",
@@ -14,7 +13,9 @@
     "semver": "^5.1.0",
     "subleveldown": "^2.1.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "hyperdrive": "^5.1.1"
+  },
   "scripts": {},
   "keywords": [
     "versioned",

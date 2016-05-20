@@ -2,14 +2,19 @@
 var fs = require('fs')
 var path = require('path')
 var minimist = require('minimist')
-var defined = require('defined')
 var level = require('level')
 var glob = require('glob')
+var hyperdrive = require('hyperdrive')
+var sub = require('subleveldown')
 var pkgdb = require('../')
 
 var argv = minimist(process.argv.slice(2))
-var dir = process.cwd()
-var pkg = pkgdb(level('.pkgdb'))
+var db = level('.pkgdb')
+
+var pkg = pkgdb({
+  drive: hyperdrive(sub(db, 'd')),
+  db: sub(db, 'i')
+})
 
 if (argv._[0] === 'publish') {
   var version = argv._[1]

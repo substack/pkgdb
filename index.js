@@ -1,4 +1,3 @@
-var hyperdrive = require('hyperdrive')
 var hprefix = require('hyperdrive-prefix')
 var sub = require('subleveldown')
 var mutexify = require('mutexify')
@@ -6,11 +5,11 @@ var Package = require('./lib/pkg.js')
 
 var INFO = 'i', DRIVE = 'd'
 
-module.exports = function (db, opts) {
+module.exports = function (opts) {
   var link = null
   var lock = mutexify()
-  var idb = sub(db, INFO)
-  var drive = hyperdrive(sub(db, DRIVE))
+  var idb = opts.db
+  var drive = opts.drive
 
   var pkg = new Package(function (version) {
     var cursor = hprefix(version)
