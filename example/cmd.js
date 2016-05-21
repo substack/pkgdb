@@ -5,6 +5,7 @@ var minimist = require('minimist')
 var level = require('level')
 var glob = require('glob')
 var hyperdrive = require('hyperdrive')
+var hyperlog = require('hyperlog')
 var sub = require('subleveldown')
 var pkgdb = require('../')
 
@@ -13,6 +14,7 @@ var db = level('.pkgdb')
 
 var pkg = pkgdb({
   drive: hyperdrive(sub(db, 'd')),
+  log: hyperlog(sub(db, 'l')),
   db: sub(db, 'i')
 })
 
