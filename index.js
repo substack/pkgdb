@@ -1,4 +1,5 @@
 var hprefix = require('hyperdrive-prefix')
+var hindex = require('hyperdrive-index')
 var sub = require('subleveldown')
 var mutexify = require('mutexify')
 var inherits = require('inherits')
@@ -7,8 +8,6 @@ var concat = require('concat-stream')
 var collect = require('collect-stream')
 var semver = require('semver')
 var once = require('once')
-
-var INFO = 'i', DRIVE = 'd'
 
 module.exports = Package
 inherits(Package, EventEmitter)
@@ -19,16 +18,16 @@ function Package (opts) {
   this.db = opts.db
   this.drive = opts.drive
   this.log = opts.log
-  this.link = null
   this.lock = mutexify()
+  this.archive = null
 }
 
 Package.prototype._getArchive = function (version) {
   var self = this
   var cursor = hprefix(version)
-  if (self.link) {
+  if (self.archive) {
     process.nextTick(function () {
-      cursor.setArchive(self.drive.createArchive(self.link, { live: true }))
+      cursor.setArchive(self.archive)
     })
   } else self.lock(onlock)
   return cursor
@@ -39,37 +38,33 @@ Package.prototype._getArchive = function (version) {
         pkg.emit('error', err)
         return release()
       } else if (ilink) {
-        self.link = Buffer(ilink, 'hex')
-        cursor.setArchive(self.drive.createArchive(self.link, { live: true }))
+        var link = Buffer(ilink, 'hex')
+        self.archive = self.drive.createArchive(link, { live: true })
+        cursor.setArchive(self.archive)
         return release()
       }
-      var archive = self.drive.createArchive(undefined, { live: true })
-      var ws = archive.createFileWriteStream('versions.json')
-      ws.once('finish', function () {
-        self.link = archive.key
-        self.db.put('link', self.link.toString('hex'), function (err) {
-          if (err) return pkg.emit('error', err)
-          var archive = self.drive.createArchive(self.link, { live: true })
-          cursor.setArchive(archive)
-          release()
-        })
+      self.archive = self.drive.createArchive({ live: true })
+      var link = self.archive.key.toString('hex')
+      self.db.put('link', link, function (err) {
+        if (err) return pkg.emit('error', err)
+        self.archive = self.drive.createArchive(link, { live: true })
+        cursor.setArchive(self.archive)
+        release()
       })
-      ws.end('[]\n')
     })
   }
 }
 
 Package.prototype.versions = function (cb) {
   cb = once(cb || noop)
-  var archive = this._getArchive('x.x.x')
-  var r = archive.createFileReadStream('../versions.json')
-  r.on('error', cb)
-  r.pipe(concat({ encoding: 'string' }, function (body) {
-    try { var versions = JSON.parse(body) }
-    catch (err) { return cb(err) }
-    if (Array.isArray(versions)) cb(null, versions)
-    else cb(new Error('unexpected non-array value for versions.json'))
-  }))
+  collect(this.log.createReadStream(), function (err, docs) {
+    if (err) cb(err)
+    else cb(null, docs.filter(filter).map(map))
+  })
+  function filter (doc) {
+    return doc.value && doc.value.type === 'publish'
+  }
+  function map (doc) { return doc.value.version }
 }
 
 Package.prototype.open = function (version) {
@@ -86,16 +81,11 @@ Package.prototype.publish = function (version, cb) {
   }
   var archive = self._getArchive(version)
   archive.commit = function () {
-    var wv = archive.createFileWriteStream('../versions.json')
-    wv.once('error', cb)
-    wv.once('finish', function () { cb(null) })
-
-    self.versions(function (err, versions) {
-      if (err) return cb(err)
-      if (!versions) versions = []
-      versions.push(version)
-      wv.end(JSON.stringify(versions, null, 2) + '\n')
-    })
+    self.log.append({
+      type: 'publish',
+      version: version,
+      hash: '...'
+    }, cb)
   }
   return archive
 }
