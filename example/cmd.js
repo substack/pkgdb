@@ -30,7 +30,10 @@ if (argv._[0] === 'publish') {
     pending++
     fs.createReadStream(m)
       .pipe(pub.createFileWriteStream(m))
-      .once('finish', done)
+      .once('finish', function () {
+        console.log('FINISH')
+        done()
+      })
   })
   g.once('end', done)
 
