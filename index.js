@@ -47,7 +47,6 @@ Package.prototype._getArchive = function (version) {
       var link = self.archive.key.toString('hex')
       self.db.put('link', link, function (err) {
         if (err) return pkg.emit('error', err)
-        self.archive = self.drive.createArchive(link, { live: true })
         cursor.setArchive(self.archive)
         release()
       })
