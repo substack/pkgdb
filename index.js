@@ -63,7 +63,13 @@ Package.prototype.versions = function (cb) {
   function filter (doc) {
     return doc.value && doc.value.type === 'publish'
   }
-  function map (doc) { return doc.value.version }
+  function map (doc) {
+    return {
+      version: doc.value.version,
+      hash: doc.value.hash,
+      block: doc.value.block
+    }
+  }
 }
 
 Package.prototype.open = function (version) {
@@ -80,11 +86,14 @@ Package.prototype.publish = function (version, cb) {
   }
   var archive = self._getArchive(version)
   archive.commit = function () {
-    self.log.append({
-      type: 'publish',
-      version: version,
-      hash: '...'
-    }, cb)
+    archive._archive.metadata.head(function (err, hash, block) {
+      self.log.append({
+        type: 'publish',
+        version: version,
+        hash: hash.toString('hex'),
+        block: block
+      }, cb)
+    })
   }
   return archive
 }
