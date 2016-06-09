@@ -14,7 +14,7 @@ var db = level('.pkgdb')
 
 var pkg = pkgdb({
   drive: hyperdrive(sub(db, 'd')),
-  log: hyperlog(sub(db, 'l')),
+  log: hyperlog(sub(db, 'l'), { valueEncoding: 'json' }),
   db: sub(db, 'i')
 })
 
@@ -30,10 +30,7 @@ if (argv._[0] === 'publish') {
     pending++
     fs.createReadStream(m)
       .pipe(pub.createFileWriteStream(m))
-      .once('finish', function () {
-        console.log('FINISH')
-        done()
-      })
+      .once('finish', done)
   })
   g.once('end', done)
 
