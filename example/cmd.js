@@ -34,7 +34,12 @@ if (argv._[0] === 'publish') {
   })
   g.once('end', done)
 
-  function done () { if (--pending === 0) pub.commit() }
+  function done () {
+    if (--pending !== 0) return
+    pub.commit(function (err) {
+      if (err) error(err)
+    })
+  }
 } else if (argv._[0] === 'versions') {
   var version = argv._[1]
   pkg.versions(function (err, versions) {
@@ -57,6 +62,6 @@ if (argv._[0] === 'publish') {
 }
 
 function error (err) {
-  console.error(err)
+  console.error(err.toString())
   process.exit(1)
 }

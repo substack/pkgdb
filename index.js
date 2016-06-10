@@ -1,5 +1,5 @@
 var hprefix = require('hyperdrive-prefix')
-var hindex = require('hyperdrive-index')
+var hlogdex = require('hyperlog-index')
 var sub = require('subleveldown')
 var mutexify = require('mutexify')
 var inherits = require('inherits')
@@ -9,17 +9,37 @@ var collect = require('collect-stream')
 var semver = require('semver')
 var once = require('once')
 
+var VERDEX = 'v'
+
 module.exports = Package
 inherits(Package, EventEmitter)
 
 function Package (opts) {
-  if (!(this instanceof Package)) return new Package(opts)
-  EventEmitter.call(this)
-  this.db = opts.db
-  this.drive = opts.drive
-  this.log = opts.log
-  this.lock = mutexify()
-  this.archive = null
+  var self = this
+  if (!(self instanceof Package)) return new Package(opts)
+  EventEmitter.call(self)
+  self.db = opts.db
+  self.drive = opts.drive
+  self.log = opts.log
+  self.lock = mutexify()
+  self.archive = null
+
+  self._verdb = sub(self.db, VERDEX)
+  self._verdex = hlogdex({
+    db: self.db,
+    log: self.log,
+    map: function (row, next) {
+      var k = row.key, v = row.value
+      if (!v || v.type !== 'publish') return next()
+      self._verdb.get(v.version, function (err, value) {
+        if (err && !notFound(err)) next(err)
+        else if (value) next(new Error(
+          'INTEGRITY ERROR: version already exists'))
+        else self._verdb.put(v.version, k, next)
+      })
+    }
+  })
+  self._verdex.on('error', self.emit.bind(self, 'error'))
 }
 
 Package.prototype._getArchive = function (version) {
@@ -78,14 +98,21 @@ Package.prototype.open = function (version) {
   return archive
 }
 
-Package.prototype.publish = function (version, cb) {
+Package.prototype.publish = function (version) {
   var self = this
-  cb = once(cb || noop)
   if (!semver.valid(version)) {
-    return errTick(cb, 'invalid semver: ' + version)
+    throw new Error('invalid semver: ' + version)
   }
   var archive = self._getArchive(version)
-  archive.commit = function () {
+  archive.commit = function (cb) {
+    cb = once(cb || noop)
+    self._availableVersion(version, function (err, ok) {
+      if (err) cb(err)
+      else if (!ok) cb(new Error('version already in use'))
+      else commit(cb)
+    })
+  }
+  function commit (cb) {
     archive._archive.metadata.head(function (err, hash, block) {
       self.log.append({
         type: 'publish',
@@ -96,6 +123,16 @@ Package.prototype.publish = function (version, cb) {
     })
   }
   return archive
+}
+Package.prototype._availableVersion = function (version, cb) {
+  var self = this
+  self._verdex.ready(function () {
+    self._verdb.get(version, function (err, ver) {
+      if (err && !notFound(err)) cb(err)
+      else if (ver) cb(null, false)
+      else cb(null, true)
+    })
+  })
 }
 
 function noop () {}
