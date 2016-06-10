@@ -24,18 +24,17 @@ function Package (opts) {
   self.lock = mutexify()
   self.archive = null
 
-  self._verdb = sub(self.db, VERDEX)
+  self._verdb = sub(self.db, VERDEX, { valueEncoding: 'json' })
   self._verdex = hlogdex({
     db: self.db,
     log: self.log,
     map: function (row, next) {
       var k = row.key, v = row.value
       if (!v || v.type !== 'publish') return next()
-      self._verdb.get(v.version, function (err, value) {
-        if (err && !notFound(err)) next(err)
-        else if (value) next(new Error(
-          'INTEGRITY ERROR: version already exists'))
-        else self._verdb.put(v.version, k, next)
+      self._verdb.get(v.version, function (err, values) {
+        if (err && !notFound(err)) return next(err)
+        values = (values || []).concat(k)
+        self._verdb.put(v.version, values, next)
       })
     }
   })
@@ -119,17 +118,22 @@ Package.prototype.publish = function (version) {
         version: version,
         hash: hash.toString('hex'),
         block: block
-      }, cb)
+      }, onappend)
+      function onappend (err) {
+        if (err) cb(err)
+        else cb(null, hash.toString('hex'))
+      }
     })
   }
   return archive
 }
+
 Package.prototype._availableVersion = function (version, cb) {
   var self = this
   self._verdex.ready(function () {
-    self._verdb.get(version, function (err, ver) {
+    self._verdb.get(version, function (err, versions) {
       if (err && !notFound(err)) cb(err)
-      else if (ver) cb(null, false)
+      else if (versions && versions.length > 0) cb(null, false)
       else cb(null, true)
     })
   })

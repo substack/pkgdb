@@ -36,8 +36,9 @@ if (argv._[0] === 'publish') {
 
   function done () {
     if (--pending !== 0) return
-    pub.commit(function (err) {
+    pub.commit(function (err, hash) {
       if (err) error(err)
+      else console.log(version, hash)
     })
   }
 } else if (argv._[0] === 'versions') {
