@@ -24,7 +24,7 @@ var glob = require('glob')
 var hyperdrive = require('hyperdrive')
 var hyperlog = require('hyperlog')
 var sub = require('subleveldown')
-var pkgdb = require('../')
+var pkgdb = require('pkgdb')
 
 var argv = minimist(process.argv.slice(2))
 var db = level('.pkgdb')
