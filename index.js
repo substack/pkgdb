@@ -1,7 +1,7 @@
 var hprefix = require('hyperdrive-prefix')
+var namedArchives = require('hyperdrive-named-archives')
 var hlogdex = require('hyperlog-index')
 var sub = require('subleveldown')
-var mutexify = require('mutexify')
 var inherits = require('inherits')
 var EventEmitter = require('events').EventEmitter
 var concat = require('concat-stream')
@@ -9,7 +9,7 @@ var collect = require('collect-stream')
 var semver = require('semver')
 var once = require('once')
 
-var VERDEX = 'v'
+var VERDEX = 'v', NAMED = 'n'
 
 module.exports = Package
 inherits(Package, EventEmitter)
@@ -21,56 +21,27 @@ function Package (opts) {
   self.db = opts.db
   self.drive = opts.drive
   self.log = opts.log
-  self.lock = mutexify()
-  self.archive = null
+
+  var named = namedArchives({
+    drive: self.drive,
+    db: sub(self.db, NAMED)
+  })
+  self.archive = named.createArchive('versions')
 
   self._verdb = sub(self.db, VERDEX, { valueEncoding: 'json' })
   self._verdex = hlogdex({
     db: self.db,
     log: self.log,
     map: function (row, next) {
-      var k = row.key, v = row.value
+      var v = row.value
       if (!v || v.type !== 'publish') return next()
       self._verdb.get(v.version, function (err, values) {
-        if (err && !notFound(err)) return next(err)
-        values = (values || []).concat(k)
+        values = (values || []).concat(v.hash)
         self._verdb.put(v.version, values, next)
       })
     }
   })
   self._verdex.on('error', self.emit.bind(self, 'error'))
-}
-
-Package.prototype._getArchive = function (version) {
-  var self = this
-  var cursor = hprefix(version)
-  if (self.archive) {
-    process.nextTick(function () {
-      cursor.setArchive(self.archive)
-    })
-  } else self.lock(onlock)
-  return cursor
-
-  function onlock (release) {
-    self.db.get('link', function (err, ilink) {
-      if (err && !notFound(err)) {
-        pkg.emit('error', err)
-        return release()
-      } else if (ilink) {
-        var link = Buffer(ilink, 'hex')
-        self.archive = self.drive.createArchive(link, { live: true })
-        cursor.setArchive(self.archive)
-        return release()
-      }
-      self.archive = self.drive.createArchive({ live: true })
-      var link = self.archive.key.toString('hex')
-      self.db.put('link', link, function (err) {
-        if (err) return pkg.emit('error', err)
-        cursor.setArchive(self.archive)
-        release()
-      })
-    })
-  }
 }
 
 Package.prototype.versions = function (cb) {
@@ -92,8 +63,16 @@ Package.prototype.versions = function (cb) {
 }
 
 Package.prototype.open = function (version) {
-  var archive = this._getArchive(version)
-  archive.createFileWriteStream = null
+  var self = this
+  var archive = hprefix(version)
+  if (/^[0-9a-f]{8,}$/.test(version)) {
+    archive.setArchive(self.archive.checkout(version))
+    return archive
+  }
+  self._verdb.get(version, function (err, hashes) {
+    if (err) return archive.emit('error', err)
+    archive.setArchive(self.archive.checkout(hashes[0]))
+  })
   return archive
 }
 
@@ -102,7 +81,8 @@ Package.prototype.publish = function (version) {
   if (!semver.valid(version)) {
     throw new Error('invalid semver: ' + version)
   }
-  var archive = self._getArchive(version)
+  var archive = hprefix(version)
+  archive.setArchive(self.archive)
   archive.commit = function (cb) {
     cb = once(cb || noop)
     self._availableVersion(version, function (err, ok) {
@@ -112,7 +92,7 @@ Package.prototype.publish = function (version) {
     })
   }
   function commit (cb) {
-    archive._archive.metadata.head(function (err, hash, block) {
+    self.archive.metadata.head(function (err, hash, block) {
       self.log.append({
         type: 'publish',
         version: version,
