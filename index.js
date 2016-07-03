@@ -68,9 +68,11 @@ Package.prototype.checkout = function (version) {
     archive.setArchive(self.archive.checkout(version))
     return archive
   }
-  self._verdb.get(version, function (err, hashes) {
-    if (err) return archive.emit('error', err)
-    archive.setArchive(self.archive.checkout(hashes[0]))
+  self._verdex.ready(function () {
+    self._verdb.get(version, function (err, hashes) {
+      if (err) return archive.emit('error', err)
+      archive.setArchive(self.archive.checkout(hashes[0]))
+    })
   })
   return archive
 }
