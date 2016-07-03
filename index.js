@@ -62,7 +62,7 @@ Package.prototype.versions = function (cb) {
   }
 }
 
-Package.prototype.open = function (version) {
+Package.prototype.checkout = function (version) {
   var self = this
   var archive = hprefix(version)
   if (/^[0-9a-f]{8,}$/.test(version)) {
