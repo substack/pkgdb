@@ -4,7 +4,6 @@ var hlogdex = require('hyperlog-index')
 var sub = require('subleveldown')
 var inherits = require('inherits')
 var EventEmitter = require('events').EventEmitter
-var concat = require('concat-stream')
 var collect = require('collect-stream')
 var semver = require('semver')
 var once = require('once')
