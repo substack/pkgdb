@@ -51,14 +51,14 @@ if (argv._[0] === 'publish') {
   })
 } else if (argv._[0] === 'files') {
   var version = argv._[1]
-  pkg.open(version).list({ live: false }, function (err, files) {
+  pkg.checkout(version).list({ live: false }, function (err, files) {
     if (err) return error(err)
     files.forEach(function (entry) { console.log(entry.name) })
   })
 } else if (argv._[0] === 'read') {
   var version = argv._[1]
   var file = argv._[2]
-  pkg.open(version).createFileReadStream(file)
+  pkg.checkout(version).createFileReadStream(file)
     .pipe(process.stdout)
 }
 
