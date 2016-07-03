@@ -18,7 +18,7 @@ test('publishing', function (t) {
     t.error(err)
     pkg.versions(function (err, versions) {
       t.error(err)
-      t.deepEqual(versions, [
+      t.deepEqual(versions.map(vprops), [
         {
           version: '1.0.0',
           hash: hash1,
@@ -30,7 +30,7 @@ test('publishing', function (t) {
       t.error(err)
       pkg.versions(function (err, versions) {
         t.error(err)
-        t.deepEqual(versions, [
+        t.deepEqual(versions.map(vprops), [
           {
             version: '1.0.0',
             hash: hash1,
@@ -77,7 +77,7 @@ test('publishing', function (t) {
     var v1 = pkg.checkout('1.0.0')
     v1.list({ live: false }, function (err, files) {
       t.error(err)
-      t.deepEqual(files, [ 'hello.txt', 'what.txt' ])
+      t.deepEqual(files.map(fname), [ 'hello.txt', 'what.txt' ])
     })
     v1.createFileReadStream('hello.txt').pipe(verify('hi'))
     v1.createFileReadStream('what.txt').pipe(verify('cool'))
@@ -85,7 +85,7 @@ test('publishing', function (t) {
     var v2 = pkg.checkout('1.0.1')
     v2.list({ live: false }, function (err, files) {
       t.error(err)
-      t.deepEqual(files, [ 'hello.txt', 'index.html' ])
+      t.deepEqual(files.map(fname), [ 'hello.txt', 'index.html' ])
     })
     v2.createFileReadStream('hello.txt').pipe(verify('HI'))
     v2.createFileReadStream('index.html').pipe(verify('<h1>what</h1>'))
@@ -97,3 +97,12 @@ test('publishing', function (t) {
     }
   }
 })
+
+function fname (x) { return x.name }
+function vprops (v) {
+  return {
+    version: v.version,
+    block: v.block,
+    hash: v.hash
+  }
+}
