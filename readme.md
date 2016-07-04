@@ -14,7 +14,7 @@ of hyperdrive, which is not yet released.
 
 # example
 
-```
+``` js
 #!/usr/bin/env node
 var fs = require('fs')
 var path = require('path')
