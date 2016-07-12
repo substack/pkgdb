@@ -11,7 +11,9 @@
     "inherits": "^2.0.1",
     "once": "^1.3.3",
     "semver": "^5.1.0",
-    "subleveldown": "^2.1.0"
+    "subleveldown": "^2.1.0",
+    "symmetric-protocol-group": "^1.1.0",
+    "to2": "^1.0.0"
   },
   "devDependencies": {
     "concat-stream": "^1.5.1",

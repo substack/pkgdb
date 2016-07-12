@@ -8,7 +8,7 @@ var concat = require('concat-stream')
 var pkgdb = require('../')
 
 test('replicate', function (t) {
-  t.plan(12)
+  t.plan(14)
   var pkg0 = pkgdb({
     drive: hyperdrive(memdb()),
     log: hyperlog(memdb(), { valueEncoding: 'json' }),
@@ -57,15 +57,18 @@ test('replicate', function (t) {
     }
   }
   function sync (cb) {
-    var r0 = pkg0.replicate()
-    var r1 = pkg1.replicate()
+    var r0 = pkg0.replicate({ live: false })
+    var r1 = pkg1.replicate({ live: false })
+    var pending = 2
+    r0.once('stream-close', function (key) {
+      t.equal(key, 'log')
+      if (--pending === 0) cb()
+    })
+    r1.once('stream-close', function (key) {
+      t.equal(key, 'log')
+      if (--pending === 0) cb()
+    })
     r0.pipe(r1).pipe(r0)
-    var pending = 4
-    r0.once('finish', onfinish)
-    r0.once('end', onfinish)
-    r1.once('finish', onfinish)
-    r1.once('end', onfinish)
-    function done () { if (--pending === 0) cb() }
   }
   function checkFiles () {
     var v1 = pkg1.checkout('1.0.0')

@@ -7,6 +7,8 @@ var EventEmitter = require('events').EventEmitter
 var collect = require('collect-stream')
 var semver = require('semver')
 var once = require('once')
+var sym = require('symmetric-protocol-group')
+var to = require('to2')
 
 var VERDEX = 'v', NAMED = 'n'
 
@@ -107,6 +109,18 @@ Package.prototype.publish = function (version) {
     })
   }
   return archive
+}
+
+Package.prototype.replicate = function (opts, cb) {
+  if (typeof opts === 'function') {
+    cb = opts
+    opts = {}
+  }
+  opts = {}
+  return sym({
+    log: this.log.replicate(opts),
+    archive: this.archive.replicate(opts)
+  }, cb)
 }
 
 Package.prototype._availableVersion = function (version, cb) {
