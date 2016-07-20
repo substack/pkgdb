@@ -23,11 +23,15 @@ function Package (opts) {
   self.drive = opts.drive
   self.log = opts.log
 
-  var named = namedArchives({
-    drive: self.drive,
-    db: sub(self.db, NAMED)
-  })
-  self.archive = named.createArchive('versions')
+  if (opts.key) {
+    self.archive = self.drive.createArchive(opts.key)
+  } else {
+    self.named = namedArchives({
+      drive: self.drive,
+      db: sub(self.db, NAMED)
+    })
+    self.archive = self.named.createArchive('versions')
+  }
 
   self._verdb = sub(self.db, VERDEX, { valueEncoding: 'json' })
   self._verdex = hlogdex({
@@ -43,6 +47,10 @@ function Package (opts) {
     }
   })
   self._verdex.on('error', self.emit.bind(self, 'error'))
+}
+
+Package.prototype.getLink = function (cb) {
+  this.named.getLink('versions', cb)
 }
 
 Package.prototype.versions = function (cb) {
@@ -128,7 +136,7 @@ Package.prototype._availableVersion = function (version, cb) {
   self._verdex.ready(function () {
     self._verdb.get(version, function (err, versions) {
       if (err && !notFound(err)) cb(err)
-      else if (versions && versions.length > 0) cb(null, false)
+      else if (Object.keys(versions || {}).length > 0) cb(null, false)
       else cb(null, true)
     })
   })

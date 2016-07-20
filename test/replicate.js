@@ -9,24 +9,27 @@ var pkgdb = require('../')
 
 test('replicate', function (t) {
   t.plan(14)
+  var hash1, hash2, pkg1
   var pkg0 = pkgdb({
     drive: hyperdrive(memdb()),
     log: hyperlog(memdb(), { valueEncoding: 'json' }),
     db: memdb()
   })
-  var pkg1 = pkgdb({
-    drive: hyperdrive(memdb()),
-    log: hyperlog(memdb(), { valueEncoding: 'json' }),
-    db: memdb()
-  })
-  var hash1, hash2
-  writev1(function (err, h1) {
-    t.error(err)
-    hash1 = h1
-    writev2(function (err, h2) {
+  pkg0.getLink(function (err, key) {
+    pkg1 = pkgdb({
+      key: key,
+      drive: hyperdrive(memdb()),
+      log: hyperlog(memdb(), { valueEncoding: 'json' }),
+      db: memdb()
+    })
+    writev1(function (err, h1) {
       t.error(err)
-      hash2 = h2
-      sync(checkFiles)
+      hash1 = h1
+      writev2(function (err, h2) {
+        t.error(err)
+        hash2 = h2
+        sync(checkFiles)
+      })
     })
   })
 
@@ -57,8 +60,9 @@ test('replicate', function (t) {
     }
   }
   function sync (cb) {
-    var r0 = pkg0.replicate({ live: false })
-    var r1 = pkg1.replicate({ live: false })
+    var r0 = pkg0.replicate()
+    var r1 = pkg1.replicate()
+
     var pending = 2
     r0.once('stream-close', function (key) {
       t.equal(key, 'log')
