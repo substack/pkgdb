@@ -1,6 +1,6 @@
 {
   "name": "pkgdb",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "p2p database for versioned directories",
   "main": "index.js",
   "dependencies": {
