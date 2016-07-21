@@ -1,6 +1,7 @@
 var hprefix = require('hyperdrive-prefix')
 var namedArchives = require('hyperdrive-named-archives')
 var hlogdex = require('hyperlog-index')
+var checkout = require('hyperdrive-checkout')
 var sub = require('subleveldown')
 var inherits = require('inherits')
 var EventEmitter = require('events').EventEmitter
@@ -41,7 +42,11 @@ function Package (opts) {
       if (!v || v.type !== 'publish') return next()
       self._verdb.get(v.version, function (err, values) {
         if (!values) values = {}
-        values[row.key] = v
+        if (values[v.hash] !== undefined) {
+          return next(new Error('version at this hash already exists: '
+            + v.version + ' / ' + v.hash))
+        }
+        values[v.hash] = v.block
         self._verdb.put(v.version, values, next)
       })
     }
@@ -71,7 +76,7 @@ Package.prototype.versions = function (cb) {
   }
 }
 
-Package.prototype.checkout = function (version) {
+Package.prototype.checkout = function (version, hash) {
   var self = this
   var archive = hprefix(version)
   if (/^[0-9a-f]{8,}$/.test(version)) {
@@ -82,8 +87,13 @@ Package.prototype.checkout = function (version) {
     self._verdb.get(version, function (err, hashes) {
       if (err) return archive.emit('error', err)
       var keys = Object.keys(hashes)
-      var v = hashes[keys[0]]
-      archive.setArchive(self.archive)
+      var block = hash
+        ? hashes[hash]
+        : hashes[keys[0]]
+      if (block === undefined) {
+        return archive.emit('error', new Error('version not found'))
+      }
+      archive.setArchive(checkout(self.archive, block))
     })
   })
   return archive
