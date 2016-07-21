@@ -120,6 +120,11 @@ directory for writing new version content.
 
 Finalize publishing. `cb(err, hash)` fires with the new commit hash.
 
+## var stream = archive.replicate(opts)
+
+Create a duplex stream for replication of the underlying hyperlog and hyperdrive
+data.
+
 # install
 
 ```
