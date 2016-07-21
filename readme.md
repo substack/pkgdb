@@ -6,12 +6,6 @@ p2p database for versioned directories
 * clients can share payloads with each other
 * re-use the same swarm for updates
 
-Note: this package depends on the [checkout feature][1]
-of hyperdrive, which is not yet released.
-
-[1]: https://github.com/mafintosh/hyperdrive/pull/74
-[2]: https://github.com/mafintosh/hyperdrive
-
 # example
 
 ``` js
@@ -96,10 +90,11 @@ var pkgdb = require('pkgdb')
 Create a new pkgdb instance from:
 
 * `opts.db` - leveldb instance for persistent storage
-* `opts.drive` - [hyperdrive][2]
-* `opts.log` - [hyperlog][3] instance
+* `opts.drive` - [hyperdrive][1]
+* `opts.log` - [hyperlog][2] instance
 
-[3]: https://github.com/mafintosh/hyperlog
+[1]: https://github.com/mafintosh/hyperdrive
+[2]: https://github.com/mafintosh/hyperlog
 
 ## pkg.versions(cb)
 
@@ -113,12 +108,12 @@ Each version `v` in the `versions` array has:
 
 ## var archive = pkg.checkout(version)
 
-Return the [hyperdrive][2] archive rooted in the semver string `version`
+Return the [hyperdrive][1] archive rooted in the semver string `version`
 directory. The archive is read-only.
 
 ## var archive = archive.publish(version)
 
-Return a new empty [hyperdrive][2] archive rooted in the semver string `version`
+Return a new empty [hyperdrive][1] archive rooted in the semver string `version`
 directory for writing new version content.
 
 ## archive.commit(cb)

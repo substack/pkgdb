@@ -32,7 +32,6 @@ function Package (opts) {
     })
     self.archive = self.named.createArchive('versions')
   }
-
   self._verdb = sub(self.db, VERDEX, { valueEncoding: 'json' })
   self._verdex = hlogdex({
     db: self.db,
@@ -41,7 +40,8 @@ function Package (opts) {
       var v = row.value
       if (!v || v.type !== 'publish') return next()
       self._verdb.get(v.version, function (err, values) {
-        values = (values || []).concat(v.hash)
+        if (!values) values = {}
+        values[row.key] = v
         self._verdb.put(v.version, values, next)
       })
     }
@@ -75,13 +75,15 @@ Package.prototype.checkout = function (version) {
   var self = this
   var archive = hprefix(version)
   if (/^[0-9a-f]{8,}$/.test(version)) {
-    archive.setArchive(self.archive.checkout(version))
+    archive.setArchive(self.archive)
     return archive
   }
   self._verdex.ready(function () {
     self._verdb.get(version, function (err, hashes) {
       if (err) return archive.emit('error', err)
-      archive.setArchive(self.archive.checkout(hashes[0]))
+      var keys = Object.keys(hashes)
+      var v = hashes[keys[0]]
+      archive.setArchive(self.archive)
     })
   })
   return archive
