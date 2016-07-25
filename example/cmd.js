@@ -10,7 +10,7 @@ var sub = require('subleveldown')
 var pkgdb = require('../')
 
 var argv = minimist(process.argv.slice(2))
-var db = level('.pkgdb')
+var db = level(argv.d || '.pkgdb')
 
 var pkg = pkgdb({
   drive: hyperdrive(sub(db, 'd')),
@@ -60,6 +60,8 @@ if (argv._[0] === 'publish') {
   var file = argv._[2]
   pkg.checkout(version).createFileReadStream(file)
     .pipe(process.stdout)
+} else if (argv._[0] === 'sync') {
+  process.stdin.pipe(pkg.replicate()).pipe(process.stdout)
 }
 
 function error (err) {

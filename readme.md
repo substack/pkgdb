@@ -6,8 +6,6 @@ p2p database for versioned directories
 * clients can share payloads with each other
 * re-use the same swarm for updates
 
-depends on: https://github.com/mafintosh/hyperdrive/pull/89
-
 # example
 
 ``` js
